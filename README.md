@@ -79,6 +79,31 @@ npm run dev
 
 5. Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
+## 🚀 Deploy en Vercel
+
+El proyecto está listo para desplegarse en Vercel:
+
+1. **Conecta tu repositorio de GitHub a Vercel**:
+   - Ve a [vercel.com](https://vercel.com)
+   - Inicia sesión con tu cuenta de GitHub
+   - Haz clic en "Add New Project"
+   - Selecciona el repositorio `Alechavezsw/agua`
+
+2. **Configura las variables de entorno**:
+   - En la configuración del proyecto en Vercel, ve a "Environment Variables"
+   - Agrega las siguientes variables:
+     - `NEXT_PUBLIC_SUPABASE_URL` = tu URL de Supabase
+     - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = tu clave anónima de Supabase
+
+3. **Deploy automático**:
+   - Vercel detectará automáticamente que es un proyecto Next.js
+   - Haz clic en "Deploy"
+   - ¡Listo! Tu aplicación estará en línea en unos minutos
+
+4. **Configuración de la base de datos**:
+   - Asegúrate de haber ejecutado el script SQL en Supabase (ver `supabase-setup.sql`)
+   - Verifica que las políticas RLS estén configuradas correctamente
+
 ## 📖 Uso
 
 1. **Ver reportes existentes**: Los marcadores azules en el mapa muestran dónde se ha reportado falta de agua.
