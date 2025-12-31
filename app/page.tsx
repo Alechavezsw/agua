@@ -98,15 +98,15 @@ export default function Home() {
             + Reportar Falta de Agua
           </button>
 
-          <div className={styles.instructions}>
-            <h3>Instrucciones:</h3>
+          <details className={styles.instructions}>
+            <summary>Instrucciones</summary>
             <ol>
               <li>Haz clic en el mapa o en el botón para reportar</li>
               <li>Arrastra el marcador rojo para ajustar la ubicación exacta</li>
               <li>Completa el formulario con los detalles</li>
               <li>Tu reporte aparecerá en el mapa</li>
             </ol>
-          </div>
+          </details>
 
           {reports.length > 0 && (
             <div className={styles.reportsList}>

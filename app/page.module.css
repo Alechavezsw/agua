@@ -23,6 +23,21 @@
   font-size: 1rem;
 }
 
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .subtitle {
+    font-size: 0.875rem;
+  }
+}
+
 .container {
   flex: 1;
   display: flex;
@@ -40,6 +55,18 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   background: white;
   position: relative;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .mapContainer {
+    min-height: calc(100vh - 120px);
+    border-radius: 8px;
+  }
 }
 
 .loading {
@@ -62,6 +89,17 @@
   gap: 1.5rem;
   max-height: calc(100vh - 200px);
   overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    max-height: none;
+    padding: 1rem;
+    gap: 1rem;
+    border-radius: 8px;
+    order: 2;
+  }
 }
 
 .stats {
@@ -163,15 +201,104 @@
 @media (max-width: 768px) {
   .container {
     flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100%;
-    max-height: none;
+    padding: 0;
+    gap: 0;
   }
 
   .mapContainer {
-    min-height: 400px;
+    min-height: calc(100vh - 140px);
+    border-radius: 0;
+    box-shadow: none;
+    order: 1;
+  }
+
+  .stats {
+    padding: 0.75rem;
+  }
+
+  .stats h2 {
+    font-size: 0.875rem;
+  }
+
+  .count {
+    font-size: 2rem;
+  }
+
+  .reportButton {
+    padding: 0.875rem;
+    font-size: 0.9375rem;
+  }
+
+  .instructions {
+    padding: 0.75rem;
+  }
+
+  .instructions summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    list-style: none;
+    user-select: none;
+  }
+
+  .instructions summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .instructions summary::before {
+    content: '▶ ';
+    display: inline-block;
+    margin-right: 0.25rem;
+    transition: transform 0.2s;
+    font-size: 0.75rem;
+  }
+
+  .instructions[open] summary::before {
+    transform: rotate(90deg);
+  }
+
+  .instructions ol {
+    font-size: 0.8125rem;
+    padding-left: 1rem;
+    line-height: 1.6;
+    margin-top: 0.5rem;
+  }
+
+  .reportsList h3 {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .reportItem {
+    padding: 0.625rem;
+  }
+
+  .reportAddress {
+    font-size: 0.875rem;
+  }
+
+  .reportDate {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .mapContainer {
+    min-height: calc(100vh - 120px);
+  }
+
+  .header {
+    padding: 0.75rem;
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .subtitle {
+    font-size: 0.8125rem;
   }
 }
 
