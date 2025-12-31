@@ -53,8 +53,8 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
 }
 
 export default function MapComponent({ reports, onMapClick }: MapComponentProps) {
-  // Coordenadas del Departamento Sarmiento, San Juan, Argentina
-  const center: [number, number] = [-31.5333, -68.5333]
+  // Coordenadas de Media Agua, cabecera del Departamento Sarmiento, San Juan, Argentina
+  const center: [number, number] = [-31.9742, -68.4231]
   const zoom = 13
 
   return (

@@ -120,9 +120,9 @@ El proyecto está listo para desplegarse en Vercel:
 
 ## 🌍 Configuración del Mapa
 
-El mapa está centrado en el Departamento Sarmiento, San Juan, Argentina. Las coordenadas por defecto son:
-- Latitud: -31.5333
-- Longitud: -68.5333
+El mapa está centrado en Media Agua, cabecera del Departamento Sarmiento, San Juan, Argentina. Las coordenadas por defecto son:
+- Latitud: -31.9742
+- Longitud: -68.4231
 - Zoom: 13
 
 Puedes ajustar estas coordenadas en `components/MapComponent.tsx` si necesitas centrar el mapa en otra ubicación.

@@ -16,8 +16,8 @@ interface ReportFormProps {
   onSubmitted: () => void
 }
 
-// Ubicación por defecto: Departamento Sarmiento, San Juan
-const DEFAULT_LOCATION = { lat: -31.5333, lng: -68.5333 }
+// Ubicación por defecto: Media Agua, cabecera del Departamento Sarmiento, San Juan
+const DEFAULT_LOCATION = { lat: -31.9742, lng: -68.4231 }
 
 export default function ReportForm({ location, onClose, onSubmitted }: ReportFormProps) {
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number }>(
