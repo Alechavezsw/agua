@@ -318,3 +318,40 @@
   }
 }
 
+.footer {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1rem 2rem;
+  text-align: center;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  margin-top: auto;
+  z-index: 1000;
+}
+
+.footer p {
+  margin: 0;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.footerLink {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.footerLink:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .footer {
+    padding: 0.75rem 1rem;
+  }
+
+  .footer p {
+    font-size: 0.8125rem;
+  }
+}
+

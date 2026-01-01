@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import { WaterReport } from '@/types'
 import ReportForm from '@/components/ReportForm'
+import WeatherWidget from '@/components/WeatherWidget'
 import styles from './page.module.css'
 
 // Dynamic import para evitar problemas de SSR con Leaflet
@@ -96,6 +97,8 @@ export default function Home() {
         </div>
 
         <div className={styles.sidebar}>
+          <WeatherWidget />
+          
           <div className={styles.stats}>
             <h2>Reportes Activos</h2>
             <p className={styles.count}>{reports.length}</p>
@@ -150,6 +153,20 @@ export default function Home() {
           onSubmitted={handleReportSubmitted}
         />
       )}
+
+      <footer className={styles.footer}>
+        <p>
+          Desarrollado por{' '}
+          <a 
+            href="https://www.cosechacreativa.com.ar" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className={styles.footerLink}
+          >
+            www.cosechacreativa.com.ar
+          </a>
+        </p>
+      </footer>
     </main>
   )
 }
