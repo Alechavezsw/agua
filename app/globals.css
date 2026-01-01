@@ -27,15 +27,23 @@ a {
 
 /* Leaflet map styles */
 .leaflet-container {
-  height: 100%;
-  width: 100%;
+  height: 100% !important;
+  width: 100% !important;
   z-index: 1;
   position: relative;
+  min-height: 400px;
 }
 
 /* Fix para móvil - asegurar que el mapa tenga dimensiones */
 .leaflet-container.leaflet-touch {
   touch-action: pan-x pan-y;
+}
+
+/* Asegurar que el contenedor del mapa tenga altura en móvil */
+@media (max-width: 768px) {
+  .leaflet-container {
+    min-height: 50vh;
+  }
 }
 
 /* Custom marker popup styles */

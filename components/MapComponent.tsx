@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { WaterReport } from '@/types'
@@ -57,22 +57,61 @@ function MapResizeHandler() {
   const map = useMap()
   
   useEffect(() => {
-    // Invalidar el tamaño del mapa cuando se monta
-    setTimeout(() => {
-      map.invalidateSize()
-    }, 100)
-    
-    // También invalidar cuando cambia el tamaño de la ventana
-    const handleResize = () => {
+    // Múltiples intentos para asegurar que el mapa se renderice correctamente en móvil
+    const invalidateSize = () => {
       map.invalidateSize()
     }
     
+    // Invalidar inmediatamente
+    invalidateSize()
+    
+    // Invalidar después de un breve delay
+    const timeout1 = setTimeout(invalidateSize, 100)
+    const timeout2 = setTimeout(invalidateSize, 300)
+    const timeout3 = setTimeout(() => {
+      invalidateSize()
+    }, 500)
+    
+    // También invalidar cuando cambia el tamaño de la ventana
+    const handleResize = () => {
+      setTimeout(invalidateSize, 100)
+    }
+    
     window.addEventListener('resize', handleResize)
-    window.addEventListener('orientationchange', handleResize)
+    window.addEventListener('orientationchange', () => {
+      setTimeout(invalidateSize, 200)
+    })
+    
+    // Invalidar cuando la ventana se enfoca (útil cuando se vuelve de otra app)
+    window.addEventListener('focus', handleResize)
     
     return () => {
+      clearTimeout(timeout1)
+      clearTimeout(timeout2)
+      clearTimeout(timeout3)
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('orientationchange', handleResize)
+      window.removeEventListener('focus', handleResize)
+    }
+  }, [map])
+  
+  return null
+}
+
+// Componente para inicializar el mapa correctamente
+function MapInitializer() {
+  const map = useMap()
+  
+  useEffect(() => {
+    // Invalidar tamaño inmediatamente después de que el mapa se crea
+    const timer1 = setTimeout(() => map.invalidateSize(), 0)
+    const timer2 = setTimeout(() => map.invalidateSize(), 100)
+    const timer3 = setTimeout(() => map.invalidateSize(), 300)
+    
+    return () => {
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+      clearTimeout(timer3)
     }
   }, [map])
   
@@ -88,7 +127,7 @@ export default function MapComponent({ reports, onMapClick }: MapComponentProps)
     <MapContainer
       center={center}
       zoom={zoom}
-      style={{ height: '100%', width: '100%' }}
+      style={{ height: '100%', width: '100%', minHeight: '400px' }}
       scrollWheelZoom={true}
     >
       <TileLayer
@@ -96,6 +135,7 @@ export default function MapComponent({ reports, onMapClick }: MapComponentProps)
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       
+      <MapInitializer />
       <MapResizeHandler />
       <MapClickHandler onMapClick={onMapClick} />
 

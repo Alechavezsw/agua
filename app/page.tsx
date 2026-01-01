@@ -18,8 +18,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted) return
+    
     loadReports()
     
     // Suscribirse a cambios en tiempo real
@@ -36,7 +43,7 @@ export default function Home() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [isMounted])
 
   const loadReports = async () => {
     try {
@@ -77,11 +84,14 @@ export default function Home() {
 
       <div className={styles.container}>
         <div className={styles.mapContainer}>
-          {!loading && (
+          {!loading && isMounted && (
             <MapComponent
               reports={reports}
               onMapClick={handleMapClick}
             />
+          )}
+          {loading && (
+            <div className={styles.loading}>Cargando mapa...</div>
           )}
         </div>
 
