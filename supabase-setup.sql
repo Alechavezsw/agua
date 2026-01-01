@@ -33,3 +33,4 @@ CREATE INDEX IF NOT EXISTS idx_water_reports_status ON water_reports(status);
 -- Crear índice para ordenamiento por fecha
 CREATE INDEX IF NOT EXISTS idx_water_reports_created_at ON water_reports(created_at DESC);
 
+

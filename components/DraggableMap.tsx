@@ -76,6 +76,33 @@ function MapCenter({ center }: { center: [number, number] }) {
   return null
 }
 
+// Componente para invalidar el tamaño del mapa (necesario en móvil)
+function MapResizeHandler() {
+  const map = useMap()
+  
+  useEffect(() => {
+    // Invalidar el tamaño del mapa cuando se monta
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 100)
+    
+    // También invalidar cuando cambia el tamaño de la ventana
+    const handleResize = () => {
+      map.invalidateSize()
+    }
+    
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+    
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+    }
+  }, [map])
+  
+  return null
+}
+
 export default function DraggableMap({ initialPosition, onLocationChange }: DraggableMapProps) {
   const [markerPosition, setMarkerPosition] = useState<[number, number]>([
     initialPosition.lat,
@@ -103,6 +130,7 @@ export default function DraggableMap({ initialPosition, onLocationChange }: Drag
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       
+      <MapResizeHandler />
       <MapCenter center={markerPosition} />
       
       <DraggableMarker

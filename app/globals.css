@@ -30,6 +30,12 @@ a {
   height: 100%;
   width: 100%;
   z-index: 1;
+  position: relative;
+}
+
+/* Fix para móvil - asegurar que el mapa tenga dimensiones */
+.leaflet-container.leaflet-touch {
+  touch-action: pan-x pan-y;
 }
 
 /* Custom marker popup styles */
@@ -41,4 +47,5 @@ a {
   margin: 12px;
   font-size: 14px;
 }
+
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { WaterReport } from '@/types'
 import 'leaflet/dist/leaflet.css'
@@ -52,6 +52,33 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
   return null
 }
 
+// Componente para invalidar el tamaño del mapa (necesario en móvil)
+function MapResizeHandler() {
+  const map = useMap()
+  
+  useEffect(() => {
+    // Invalidar el tamaño del mapa cuando se monta
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 100)
+    
+    // También invalidar cuando cambia el tamaño de la ventana
+    const handleResize = () => {
+      map.invalidateSize()
+    }
+    
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+    
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+    }
+  }, [map])
+  
+  return null
+}
+
 export default function MapComponent({ reports, onMapClick }: MapComponentProps) {
   // Coordenadas de Media Agua, cabecera del Departamento Sarmiento, San Juan, Argentina
   const center: [number, number] = [-31.9742, -68.4231]
@@ -69,6 +96,7 @@ export default function MapComponent({ reports, onMapClick }: MapComponentProps)
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       
+      <MapResizeHandler />
       <MapClickHandler onMapClick={onMapClick} />
 
       {reports.map((report) => (
