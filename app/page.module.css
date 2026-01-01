@@ -108,7 +108,7 @@
     padding: 1rem;
     gap: 1rem;
     border-radius: 8px;
-    order: 2;
+    order: 1;
   }
 }
 
@@ -216,12 +216,12 @@
   }
 
   .mapContainer {
-    min-height: calc(100vh - 140px);
-    height: calc(100vh - 140px);
-    max-height: calc(100vh - 140px);
+    min-height: 50vh;
+    height: 50vh;
+    max-height: 50vh;
     border-radius: 0;
     box-shadow: none;
-    order: 1;
+    order: 2;
     flex-shrink: 0;
   }
 
@@ -299,9 +299,9 @@
 
 @media (max-width: 480px) {
   .mapContainer {
-    min-height: calc(100vh - 120px);
-    height: calc(100vh - 120px);
-    max-height: calc(100vh - 120px);
+    min-height: 50vh;
+    height: 50vh;
+    max-height: 50vh;
     flex-shrink: 0;
   }
 
