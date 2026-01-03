@@ -138,7 +138,8 @@
 }
 
 .mapButton,
-.logoutButton {
+.logoutButton,
+.reportButton {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;
@@ -146,6 +147,16 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.reportButton {
+  background: #667eea;
+  color: white;
+}
+
+.reportButton:hover {
+  background: #5568d3;
+  transform: translateY(-1px);
 }
 
 .mapButton {
@@ -433,6 +444,28 @@
   font-weight: 500;
 }
 
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.chartContainer {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.chartContainer h4 {
+  margin: 0 0 1rem 0;
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 .filters {
   background: white;
   border-radius: 12px;
@@ -643,6 +676,22 @@
 
   .zoneRank {
     align-self: flex-start;
+  }
+
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .headerActions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .reportButton,
+  .mapButton,
+  .logoutButton {
+    flex: 1;
+    min-width: 80px;
   }
 
   .filters {

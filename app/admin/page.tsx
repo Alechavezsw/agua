@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { WaterReport, REPORT_TYPES } from '@/types'
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 import styles from './admin.module.css'
 
 export default function AdminPanel() {
@@ -282,6 +285,12 @@ export default function AdminPanel() {
           <p>Sarmiento Reclamos</p>
         </div>
         <div className={styles.headerActions}>
+          <button onClick={generatePDFReport} className={styles.reportButton}>
+            📄 PDF
+          </button>
+          <button onClick={generateCSVReport} className={styles.reportButton}>
+            📊 CSV
+          </button>
           <button onClick={() => router.push('/')} className={styles.mapButton}>
             🗺️ Ver Mapa
           </button>
@@ -344,6 +353,46 @@ export default function AdminPanel() {
             <div className={styles.statsRow}>
               <div className={styles.statsBox}>
                 <h3>📋 Por Tipo de Reclamo</h3>
+                <div className={styles.chartsGrid}>
+                  <div className={styles.chartContainer}>
+                    <h4>Distribución por Tipo</h4>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={statsByType.filter(s => s.total > 0)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="total"
+                        >
+                          {statsByType.filter(s => s.total > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className={styles.chartContainer}>
+                    <h4>Comparación Total vs Activos</h4>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={statsByType.filter(s => s.total > 0)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="type" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="total" fill="#3b82f6" name="Total" />
+                        <Bar dataKey="active" fill="#ef4444" name="Activos" />
+                        <Bar dataKey="resolved" fill="#10b981" name="Resueltos" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
                 <div className={styles.typeStatsGrid}>
                   {statsByType.map(stat => (
                     <div key={stat.type} className={styles.typeStatCard} style={{ borderLeftColor: stat.color }}>
@@ -408,6 +457,19 @@ export default function AdminPanel() {
             <div className={styles.statsRow}>
               <div className={styles.statsBox}>
                 <h3>📅 Reclamos por Día de la Semana</h3>
+                <div className={styles.chartContainer}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dayStats}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="count" fill="#667eea" name="Total" />
+                      <Bar dataKey="active" fill="#ef4444" name="Activos" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
                 <div className={styles.dayStatsGrid}>
                   {dayStats.map(day => (
                     <div key={day.day} className={styles.dayStatCard}>
@@ -427,6 +489,24 @@ export default function AdminPanel() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.statsRow}>
+              <div className={styles.statsBox}>
+                <h3>⏰ Reclamos por Hora del Día</h3>
+                <div className={styles.chartContainer}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={hourStats}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" label={{ value: 'Hora', position: 'insideBottom', offset: -5 }} />
+                      <YAxis label={{ value: 'Cantidad', angle: -90, position: 'insideLeft' }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="count" stroke="#667eea" strokeWidth={2} name="Reclamos" />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
