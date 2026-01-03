@@ -6,8 +6,15 @@ import { supabase } from '@/lib/supabase'
 import { WaterReport, REPORT_TYPES } from '@/types'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import styles from './admin.module.css'
+
+// Extender el tipo de jsPDF para incluir autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF
+  }
+}
 
 export default function AdminPanel() {
   const router = useRouter()
@@ -308,7 +315,7 @@ export default function AdminPanel() {
       ['Total Fotos', totalPhotos.toString()],
     ]
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: 45,
       head: [['Métrica', 'Valor']],
       body: generalStats,
@@ -327,7 +334,7 @@ export default function AdminPanel() {
       stat.resolved.toString(),
     ])
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: finalY + 5,
       head: [['Tipo', 'Total', 'Activos', 'Resueltos']],
       body: typeStatsData,
@@ -346,7 +353,7 @@ export default function AdminPanel() {
       zone.active.toString(),
     ])
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: finalY + 5,
       head: [['Rank', 'Zona', 'Total', 'Activos']],
       body: zonesData,
