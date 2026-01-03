@@ -260,16 +260,16 @@
   color: #6b7280;
 }
 
-table {
+.reportsTable :global(table) {
   width: 100%;
   border-collapse: collapse;
 }
 
-thead {
+.reportsTable :global(thead) {
   background: #f9fafb;
 }
 
-th {
+.reportsTable :global(th) {
   padding: 1rem;
   text-align: left;
   font-weight: 600;
@@ -279,14 +279,14 @@ th {
   border-bottom: 2px solid #e5e7eb;
 }
 
-td {
+.reportsTable :global(td) {
   padding: 1rem;
   border-bottom: 1px solid #e5e7eb;
   color: #374151;
   font-size: 0.875rem;
 }
 
-tbody tr:hover {
+.reportsTable :global(tbody tr:hover) {
   background: #f9fafb;
 }
 
@@ -416,7 +416,7 @@ tbody tr:hover {
     overflow-x: scroll;
   }
 
-  table {
+  .reportsTable :global(table) {
     min-width: 800px;
   }
 }
