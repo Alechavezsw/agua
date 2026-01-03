@@ -148,21 +148,23 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
     setError('')
 
     try {
-      // Primero crear el reporte
+      // Primero crear el reporte (sin photos inicialmente)
+      const reportDataToInsert: any = {
+        latitude: currentLocation.lat,
+        longitude: currentLocation.lng,
+        address: address.trim(),
+        description: description.trim() || null,
+        reported_by: reportType === 'reclamo' ? 'Anónimo' : (reportedBy.trim() || 'Anónimo'),
+        status: 'active',
+        report_type: reportType,
+      }
+
+      // Solo agregar photos si la columna existe (se agregará después si hay fotos)
+      // No incluimos photos aquí para evitar errores si la columna no existe
+
       const { data: reportData, error: supabaseError } = await supabase
         .from('water_reports')
-        .insert([
-          {
-            latitude: currentLocation.lat,
-            longitude: currentLocation.lng,
-            address: address.trim(),
-            description: description.trim() || null,
-            reported_by: reportType === 'reclamo' ? 'Anónimo' : (reportedBy.trim() || 'Anónimo'),
-            status: 'active',
-            report_type: reportType,
-            photos: [], // Se actualizará después de subir las fotos
-          },
-        ])
+        .insert([reportDataToInsert])
         .select()
 
       if (supabaseError) throw supabaseError
@@ -177,16 +179,27 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
           photoUrls = await uploadPhotos(reportId)
           
           // Actualizar el reporte con las URLs de las fotos
+          // Intentar actualizar, pero si falla por columna inexistente, no es crítico
           const { error: updateError } = await supabase
             .from('water_reports')
             .update({ photos: photoUrls })
             .eq('id', reportId)
 
-          if (updateError) throw updateError
+          if (updateError) {
+            // Si el error es porque la columna no existe, informar al usuario
+            if (updateError.message?.includes('photos') || updateError.message?.includes('column')) {
+              console.error('Error: La columna photos no existe en la base de datos')
+              setError('El reclamo se guardó pero la columna de fotos no está configurada. Por favor, ejecuta el script SQL para agregar la columna photos.')
+            } else {
+              throw updateError
+            }
+          }
         } catch (photoError: any) {
           console.error('Error subiendo fotos:', photoError)
           // Continuar aunque falle la subida de fotos
-          setError('El reclamo se guardó pero hubo un error al subir las fotos. Puedes intentar agregarlas más tarde.')
+          if (!error) {
+            setError('El reclamo se guardó pero hubo un error al subir las fotos. Verifica que la columna photos exista en la base de datos.')
+          }
         }
       }
 
