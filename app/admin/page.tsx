@@ -70,6 +70,15 @@ export default function AdminPanel() {
       if (allError) throw allError
       setAllReports(allData || [])
 
+      // Cargar encuestas
+      const { data: surveysData, error: surveysError } = await supabase
+        .from('surveys')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (surveysError) throw surveysError
+      setSurveys(surveysData || [])
+
       // Cargar reportes filtrados para la tabla
       let query = supabase
         .from('water_reports')

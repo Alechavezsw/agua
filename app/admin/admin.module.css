@@ -466,6 +466,68 @@
   text-align: center;
 }
 
+.surveysGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.surveyResultCard {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.surveyResultCard h4 {
+  margin: 0 0 1rem 0;
+  color: #374151;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-align: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.surveyStats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.surveyStat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 6px;
+}
+
+.surveyStatLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.surveyStatValue {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.surveyChart {
+  margin-top: 1rem;
+}
+
+.noData {
+  text-align: center;
+  padding: 2rem;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
 .filters {
   background: white;
   border-radius: 12px;

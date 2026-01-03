@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { WaterReport, REPORT_TYPES } from '@/types'
 import ReportForm from '@/components/ReportForm'
 import WeatherWidget from '@/components/WeatherWidget'
+import SurveyWidget from '@/components/SurveyWidget'
 import styles from './page.module.css'
 
 // Dynamic import para evitar problemas de SSR con Leaflet
@@ -112,6 +113,22 @@ export default function Home() {
           <div className={styles.stats}>
             <h2>Reclamos Activos</h2>
             <p className={styles.count}>{reports.length}</p>
+          </div>
+
+          <div className={styles.surveysSection}>
+            <h3 className={styles.surveysTitle}>📊 Encuestas</h3>
+            <SurveyWidget 
+              question="¿Cómo considera la gestión de Castro?"
+              questionKey="castro"
+            />
+            <SurveyWidget 
+              question="¿Cómo considera la gestión de Orrego?"
+              questionKey="orrego"
+            />
+            <SurveyWidget 
+              question="¿Cómo considera la gestión de Milei?"
+              questionKey="milei"
+            />
           </div>
 
           <button
