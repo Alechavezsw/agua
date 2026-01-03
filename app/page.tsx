@@ -90,9 +90,6 @@ export default function Home() {
               Mapa interactivo para reportar problemas en el Departamento Sarmiento
             </p>
           </div>
-          <a href="/admin" className={styles.adminLink}>
-            🔐 Admin
-          </a>
         </div>
       </header>
 
