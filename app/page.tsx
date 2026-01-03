@@ -7,6 +7,7 @@ import { WaterReport, REPORT_TYPES } from '@/types'
 import ReportForm from '@/components/ReportForm'
 import WeatherWidget from '@/components/WeatherWidget'
 import SurveyWidget from '@/components/SurveyWidget'
+import PowerOutagesWidget from '@/components/PowerOutagesWidget'
 import styles from './page.module.css'
 
 // Dynamic import para evitar problemas de SSR con Leaflet
@@ -109,6 +110,7 @@ export default function Home() {
 
         <div className={styles.sidebar}>
           <WeatherWidget />
+          <PowerOutagesWidget />
           
           <div className={styles.stats}>
             <h2>Reclamos Activos</h2>
