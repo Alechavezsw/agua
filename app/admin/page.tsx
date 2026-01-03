@@ -277,6 +277,119 @@ export default function AdminPanel() {
 
   const peakHour = hourStats.reduce((max, stat) => stat.count > max.count ? stat : max, hourStats[0])
 
+  // Colores para gráficos
+  const CHART_COLORS = ['#3b82f6', '#fbbf24', '#8b5cf6', '#10b981', '#ef4444', '#ec4899', '#06b6d4']
+
+  // Función para generar reporte PDF
+  const generatePDFReport = () => {
+    const doc = new jsPDF()
+    
+    // Título
+    doc.setFontSize(20)
+    doc.text('Reporte de Reclamos - Sarmiento Reclamos', 14, 20)
+    
+    // Fecha del reporte
+    doc.setFontSize(10)
+    doc.text(`Generado el: ${new Date().toLocaleString('es-AR')}`, 14, 30)
+    
+    // Estadísticas generales
+    doc.setFontSize(14)
+    doc.text('Estadísticas Generales', 14, 40)
+    doc.setFontSize(10)
+    
+    const generalStats = [
+      ['Total Reclamos', totalCount.toString()],
+      ['Activos', activeCount.toString()],
+      ['Resueltos', resolvedCount.toString()],
+      ['Hoy', todayReports.toString()],
+      ['Últimos 7 días', last7DaysReports.toString()],
+      ['Últimos 30 días', last30DaysReports.toString()],
+      ['Con Fotos', reportsWithPhotos.toString()],
+      ['Total Fotos', totalPhotos.toString()],
+    ]
+    
+    doc.autoTable({
+      startY: 45,
+      head: [['Métrica', 'Valor']],
+      body: generalStats,
+      theme: 'striped',
+    })
+    
+    // Estadísticas por tipo
+    let finalY = (doc as any).lastAutoTable.finalY + 15
+    doc.setFontSize(14)
+    doc.text('Estadísticas por Tipo de Reclamo', 14, finalY)
+    
+    const typeStatsData = statsByType.map(stat => [
+      `${stat.icon} ${stat.type}`,
+      stat.total.toString(),
+      stat.active.toString(),
+      stat.resolved.toString(),
+    ])
+    
+    doc.autoTable({
+      startY: finalY + 5,
+      head: [['Tipo', 'Total', 'Activos', 'Resueltos']],
+      body: typeStatsData,
+      theme: 'striped',
+    })
+    
+    // Top zonas
+    finalY = (doc as any).lastAutoTable.finalY + 15
+    doc.setFontSize(14)
+    doc.text('Top 10 Zonas Más Afectadas', 14, finalY)
+    
+    const zonesData = topZones.map((zone, index) => [
+      `#${index + 1}`,
+      zone.name,
+      zone.count.toString(),
+      zone.active.toString(),
+    ])
+    
+    doc.autoTable({
+      startY: finalY + 5,
+      head: [['Rank', 'Zona', 'Total', 'Activos']],
+      body: zonesData,
+      theme: 'striped',
+    })
+    
+    // Guardar PDF
+    doc.save(`reporte-sarmiento-reclamos-${new Date().toISOString().split('T')[0]}.pdf`)
+  }
+
+  // Función para generar reporte CSV
+  const generateCSVReport = () => {
+    const headers = ['ID', 'Tipo', 'Dirección', 'Descripción', 'Reportado por', 'Estado', 'Fecha', 'Fotos']
+    const rows = allReports.map(report => {
+      const typeInfo = REPORT_TYPES.find(t => t.value === (report.report_type || 'agua')) || REPORT_TYPES[0]
+      return [
+        report.id || '',
+        typeInfo.label,
+        report.address || 'Sin dirección',
+        report.description || '',
+        report.reported_by || 'Anónimo',
+        report.status === 'active' ? 'Activo' : 'Resuelto',
+        report.created_at ? new Date(report.created_at).toLocaleString('es-AR') : '',
+        (report.photos?.length || 0).toString(),
+      ]
+    })
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+    
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `reporte-sarmiento-reclamos-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className={styles.adminContainer}>
       <header className={styles.adminHeader}>
