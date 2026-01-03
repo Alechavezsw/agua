@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
+import { ReportType, REPORT_TYPES } from '@/types'
 import styles from './ReportForm.module.css'
 
 // Dynamic import para el mapa con marcador arrastrable
@@ -26,6 +27,10 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
   const [address, setAddress] = useState('')
   const [description, setDescription] = useState('')
   const [reportedBy, setReportedBy] = useState('')
+  const [reportType, setReportType] = useState<ReportType>('agua')
+  const [photos, setPhotos] = useState<File[]>([])
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [resolvedAddress, setResolvedAddress] = useState('')
@@ -63,6 +68,69 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
     setCurrentLocation({ lat, lng })
   }
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    // Limitar a 5 fotos máximo
+    const remainingSlots = 5 - photos.length
+    const filesToAdd = files.slice(0, remainingSlots)
+    
+    setPhotos([...photos, ...filesToAdd])
+
+    // Crear previews
+    filesToAdd.forEach((file) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPhotoPreviews((prev) => [...prev, reader.result as string])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos(photos.filter((_, i) => i !== index))
+    setPhotoPreviews(photoPreviews.filter((_, i) => i !== index))
+  }
+
+  const uploadPhotos = async (reportId: string): Promise<string[]> => {
+    if (photos.length === 0) return []
+
+    setUploadingPhotos(true)
+    const uploadedUrls: string[] = []
+
+    try {
+      for (let i = 0; i < photos.length; i++) {
+        const file = photos[i]
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${reportId}-${Date.now()}-${i}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('reclamos-photos')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('reclamos-photos')
+          .getPublicUrl(filePath)
+
+        uploadedUrls.push(publicUrl)
+      }
+
+      return uploadedUrls
+    } catch (err: any) {
+      console.error('Error subiendo fotos:', err)
+      throw err
+    } finally {
+      setUploadingPhotos(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -80,7 +148,8 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
     setError('')
 
     try {
-      const { data, error: supabaseError } = await supabase
+      // Primero crear el reporte
+      const { data: reportData, error: supabaseError } = await supabase
         .from('water_reports')
         .insert([
           {
@@ -88,13 +157,38 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
             longitude: currentLocation.lng,
             address: address.trim(),
             description: description.trim() || null,
-            reported_by: reportedBy.trim() || 'Anónimo',
+            reported_by: reportType === 'reclamo' ? 'Anónimo' : (reportedBy.trim() || 'Anónimo'),
             status: 'active',
+            report_type: reportType,
+            photos: [], // Se actualizará después de subir las fotos
           },
         ])
         .select()
 
       if (supabaseError) throw supabaseError
+
+      const reportId = reportData?.[0]?.id
+      if (!reportId) throw new Error('No se pudo crear el reporte')
+
+      // Subir fotos si hay
+      let photoUrls: string[] = []
+      if (photos.length > 0) {
+        try {
+          photoUrls = await uploadPhotos(reportId)
+          
+          // Actualizar el reporte con las URLs de las fotos
+          const { error: updateError } = await supabase
+            .from('water_reports')
+            .update({ photos: photoUrls })
+            .eq('id', reportId)
+
+          if (updateError) throw updateError
+        } catch (photoError: any) {
+          console.error('Error subiendo fotos:', photoError)
+          // Continuar aunque falle la subida de fotos
+          setError('El reclamo se guardó pero hubo un error al subir las fotos. Puedes intentar agregarlas más tarde.')
+        }
+      }
 
       onSubmitted()
     } catch (err: any) {
@@ -109,13 +203,30 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h2>Reportar Falta de Agua</h2>
+          <h2>Nuevo Reclamo</h2>
           <button className={styles.closeButton} onClick={onClose}>
             ×
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.formGroup}>
+            <label htmlFor="reportType">Tipo de Reclamo *</label>
+            <select
+              id="reportType"
+              value={reportType}
+              onChange={(e) => setReportType(e.target.value as ReportType)}
+              className={styles.select}
+              required
+            >
+              {REPORT_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.icon} {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className={styles.mapSection}>
             <label className={styles.mapLabel}>
               <strong>📍 Ajusta la ubicación arrastrando el marcador rojo:</strong>
@@ -166,15 +277,55 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
             />
           </div>
 
+          {reportType !== 'reclamo' && (
+            <div className={styles.formGroup}>
+              <label htmlFor="reportedBy">Tu nombre (opcional)</label>
+              <input
+                id="reportedBy"
+                type="text"
+                value={reportedBy}
+                onChange={(e) => setReportedBy(e.target.value)}
+                placeholder="Ej: Juan Pérez"
+              />
+            </div>
+          )}
+          {reportType === 'reclamo' && (
+            <div className={styles.infoBox}>
+              <p>ℹ️ Este reclamo será anónimo. Tu nombre no se mostrará.</p>
+            </div>
+          )}
+
           <div className={styles.formGroup}>
-            <label htmlFor="reportedBy">Tu nombre (opcional)</label>
+            <label htmlFor="photos">Fotos (opcional, máximo 5)</label>
             <input
-              id="reportedBy"
-              type="text"
-              value={reportedBy}
-              onChange={(e) => setReportedBy(e.target.value)}
-              placeholder="Ej: Juan Pérez"
+              id="photos"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handlePhotoChange}
+              disabled={photos.length >= 5 || loading}
+              className={styles.fileInput}
             />
+            {photos.length > 0 && (
+              <div className={styles.photosPreview}>
+                {photoPreviews.map((preview, index) => (
+                  <div key={index} className={styles.photoPreview}>
+                    <img src={preview} alt={`Preview ${index + 1}`} />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(index)}
+                      className={styles.removePhotoButton}
+                      disabled={loading}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {photos.length >= 5 && (
+              <p className={styles.photoLimit}>Máximo 5 fotos</p>
+            )}
           </div>
 
           {error && <div className={styles.error}>{error}</div>}
@@ -191,9 +342,9 @@ export default function ReportForm({ location, onClose, onSubmitted }: ReportFor
             <button
               type="submit"
               className={styles.submitButton}
-              disabled={loading}
+              disabled={loading || uploadingPhotos}
             >
-              {loading ? 'Guardando...' : 'Guardar Reporte'}
+              {uploadingPhotos ? 'Subiendo fotos...' : loading ? 'Guardando...' : 'Guardar Reporte'}
             </button>
           </div>
         </form>

@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { WaterReport } from '@/types'
+import { WaterReport, REPORT_TYPES } from '@/types'
 import 'leaflet/dist/leaflet.css'
 
 // Fix para los iconos de Leaflet en Next.js
@@ -24,18 +24,28 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon
 
-// Icono personalizado para reportes de agua
-const waterIcon = L.icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-    <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="14" fill="#3b82f6" stroke="white" stroke-width="2"/>
-      <path d="M16 8 C16 8, 12 12, 12 16 C12 20, 16 24, 16 24 C16 24, 20 20, 20 16 C20 12, 16 8, 16 8 Z" fill="white"/>
-    </svg>
-  `),
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32]
-})
+// Función para crear iconos personalizados según el tipo de reporte
+const createReportIcon = (type: string, color: string) => {
+  const icons: { [key: string]: string } = {
+    agua: `<path d="M16 8 C16 8, 12 12, 12 16 C12 20, 16 24, 16 24 C16 24, 20 20, 20 16 C20 12, 16 8, 16 8 Z" fill="white"/>`,
+    luz: `<path d="M16 6 L20 14 L16 14 L16 26 L12 14 L16 14 Z" fill="white"/>`,
+    calles: `<rect x="8" y="14" width="16" height="4" fill="white"/><rect x="10" y="10" width="12" height="2" fill="white"/><rect x="10" y="20" width="12" height="2" fill="white"/>`,
+    residuos: `<rect x="10" y="12" width="12" height="10" rx="1" fill="white"/><path d="M12 12 L12 8 L14 8 L14 12 M18 12 L18 8 L20 8 L20 12" fill="white"/>`,
+    reclamo: `<circle cx="16" cy="16" r="6" fill="white"/><path d="M16 12 L16 20 M12 16 L20 16" stroke="${color}" stroke-width="2" fill="none"/>`,
+  }
+  
+  return L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+      <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="14" fill="${color}" stroke="white" stroke-width="2"/>
+        ${icons[type] || icons.agua}
+      </svg>
+    `),
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
+  })
+}
 
 interface MapComponentProps {
   reports: WaterReport[]
@@ -139,28 +149,63 @@ export default function MapComponent({ reports, onMapClick }: MapComponentProps)
       <MapResizeHandler />
       <MapClickHandler onMapClick={onMapClick} />
 
-      {reports.map((report) => (
-        <Marker
-          key={report.id}
-          position={[report.latitude, report.longitude]}
-          icon={waterIcon}
-        >
-          <Popup>
-            <div style={{ minWidth: '200px' }}>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>
-                💧 Falta de Agua
-              </h3>
-              {report.address && (
-                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#666' }}>
-                  <strong>Dirección:</strong> {report.address}
-                </p>
-              )}
+      {reports.map((report) => {
+        const reportType = report.report_type || 'agua'
+        const typeInfo = REPORT_TYPES.find(t => t.value === reportType) || REPORT_TYPES[0]
+        const icon = createReportIcon(reportType, typeInfo.color)
+        
+        return (
+          <Marker
+            key={report.id}
+            position={[report.latitude, report.longitude]}
+            icon={icon}
+          >
+            <Popup>
+              <div style={{ minWidth: '200px' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: typeInfo.color }}>
+                  {typeInfo.icon} {typeInfo.label}
+                </h3>
+                {report.address && (
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#666' }}>
+                    <strong>Dirección:</strong> {report.address}
+                  </p>
+                )}
               {report.description && (
                 <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
                   {report.description}
                 </p>
               )}
-              {report.reported_by && (
+              {report.photos && report.photos.length > 0 && (
+                <div style={{ margin: '8px 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {report.photos.map((photo, idx) => (
+                    <a
+                      key={idx}
+                      href={photo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'block',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        border: '1px solid #e5e7eb'
+                      }}
+                    >
+                      <img
+                        src={photo}
+                        alt={`Foto ${idx + 1}`}
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          maxHeight: '150px',
+                          objectFit: 'cover',
+                          display: 'block'
+                        }}
+                      />
+                    </a>
+                  ))}
+                </div>
+              )}
+              {report.reported_by && report.report_type !== 'reclamo' && (
                 <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#999' }}>
                   Reportado por: {report.reported_by}
                 </p>
@@ -170,10 +215,11 @@ export default function MapComponent({ reports, onMapClick }: MapComponentProps)
                   {new Date(report.created_at).toLocaleString('es-AR')}
                 </p>
               )}
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+              </div>
+            </Popup>
+          </Marker>
+        )
+      })}
     </MapContainer>
   )
 }

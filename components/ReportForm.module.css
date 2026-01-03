@@ -125,7 +125,8 @@
 }
 
 .formGroup input,
-.formGroup textarea {
+.formGroup textarea,
+.formGroup select {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #d1d5db;
@@ -136,10 +137,106 @@
 }
 
 .formGroup input:focus,
-.formGroup textarea:focus {
+.formGroup textarea:focus,
+.formGroup select:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.select {
+  background-color: white;
+  cursor: pointer;
+}
+
+.infoBox {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+}
+
+.infoBox p {
+  margin: 0;
+}
+
+.fileInput {
+  padding: 0.5rem;
+  border: 2px dashed #d1d5db;
+  border-radius: 6px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fileInput:hover:not(:disabled) {
+  border-color: #667eea;
+  background: #f3f4f6;
+}
+
+.fileInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.photosPreview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.photoPreview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+}
+
+.photoPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.removePhotoButton {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.9);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.removePhotoButton:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 1);
+  transform: scale(1.1);
+}
+
+.removePhotoButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.photoLimit {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
 }
 
 .useAddressButton {
@@ -273,9 +370,15 @@
   }
 
   .formGroup input,
-  .formGroup textarea {
+  .formGroup textarea,
+  .formGroup select {
     padding: 0.625rem;
     font-size: 0.9375rem;
+  }
+
+  .photosPreview {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
   }
 
   .actions {
