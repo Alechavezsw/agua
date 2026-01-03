@@ -12,9 +12,11 @@ export default function AdminPanel() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [reports, setReports] = useState<WaterReport[]>([])
+  const [allReports, setAllReports] = useState<WaterReport[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'resolved'>('all')
   const [reportTypeFilter, setReportTypeFilter] = useState<string>('all')
+  const [showStats, setShowStats] = useState(true)
 
   useEffect(() => {
     // Verificar si ya está autenticado
@@ -49,6 +51,16 @@ export default function AdminPanel() {
 
   const loadReports = async () => {
     try {
+      // Cargar todos los reportes para estadísticas
+      const { data: allData, error: allError } = await supabase
+        .from('water_reports')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (allError) throw allError
+      setAllReports(allData || [])
+
+      // Cargar reportes filtrados para la tabla
       let query = supabase
         .from('water_reports')
         .select('*')
@@ -167,8 +179,100 @@ export default function AdminPanel() {
     )
   }
 
-  const activeCount = reports.filter(r => r.status === 'active').length
-  const resolvedCount = reports.filter(r => r.status === 'resolved').length
+  // Estadísticas generales
+  const activeCount = allReports.filter(r => r.status === 'active').length
+  const resolvedCount = allReports.filter(r => r.status === 'resolved').length
+  const totalCount = allReports.length
+
+  // Estadísticas por tipo
+  const statsByType = REPORT_TYPES.map(type => ({
+    type: type.label,
+    icon: type.icon,
+    color: type.color,
+    total: allReports.filter(r => r.report_type === type.value).length,
+    active: allReports.filter(r => r.report_type === type.value && r.status === 'active').length,
+    resolved: allReports.filter(r => r.report_type === type.value && r.status === 'resolved').length,
+  }))
+
+  // Estadísticas temporales
+  const today = new Date()
+  const last7Days = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const last30Days = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+  
+  const todayReports = allReports.filter(r => {
+    const reportDate = new Date(r.created_at || '')
+    return reportDate.toDateString() === today.toDateString()
+  }).length
+
+  const last7DaysReports = allReports.filter(r => {
+    const reportDate = new Date(r.created_at || '')
+    return reportDate >= last7Days
+  }).length
+
+  const last30DaysReports = allReports.filter(r => {
+    const reportDate = new Date(r.created_at || '')
+    return reportDate >= last30Days
+  }).length
+
+  // Estadísticas de fotos
+  const reportsWithPhotos = allReports.filter(r => r.photos && r.photos.length > 0).length
+  const totalPhotos = allReports.reduce((sum, r) => sum + (r.photos?.length || 0), 0)
+
+  // Zonas más afectadas (agrupando por dirección similar)
+  const getZoneFromAddress = (address: string) => {
+    if (!address) return 'Sin dirección'
+    // Extraer la parte principal de la dirección (antes de la coma o número)
+    const parts = address.split(',')
+    if (parts.length > 0) {
+      const mainPart = parts[0].trim()
+      // Remover números de casa
+      return mainPart.replace(/\d+/g, '').trim() || 'Sin dirección'
+    }
+    return address
+  }
+
+  const zoneStats = allReports.reduce((acc, report) => {
+    const zone = getZoneFromAddress(report.address || '')
+    if (!acc[zone]) {
+      acc[zone] = { name: zone, count: 0, active: 0, types: {} as Record<string, number> }
+    }
+    acc[zone].count++
+    if (report.status === 'active') acc[zone].active++
+    const type = report.report_type || 'agua'
+    acc[zone].types[type] = (acc[zone].types[type] || 0) + 1
+    return acc
+  }, {} as Record<string, { name: string; count: number; active: number; types: Record<string, number> }>)
+
+  const topZones = Object.values(zoneStats)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+
+  // Estadísticas por día de la semana
+  const dayStats = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map((day, index) => {
+    const dayReports = allReports.filter(r => {
+      const reportDate = new Date(r.created_at || '')
+      return reportDate.getDay() === index
+    })
+    return {
+      day,
+      count: dayReports.length,
+      active: dayReports.filter(r => r.status === 'active').length,
+    }
+  })
+
+  // Estadísticas por hora del día
+  const hourStats = Array.from({ length: 24 }, (_, hour) => {
+    const hourReports = allReports.filter(r => {
+      const reportDate = new Date(r.created_at || '')
+      return reportDate.getHours() === hour
+    })
+    return {
+      hour,
+      count: hourReports.length,
+    }
+  })
+
+  const peakHour = hourStats.reduce((max, stat) => stat.count > max.count ? stat : max, hourStats[0])
 
   return (
     <div className={styles.adminContainer}>
@@ -187,19 +291,147 @@ export default function AdminPanel() {
         </div>
       </header>
 
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <h3>Total Reclamos</h3>
-          <p className={styles.statNumber}>{reports.length}</p>
+      <div className={styles.statsSection}>
+        <div className={styles.sectionHeader}>
+          <h2>📊 Estadísticas Generales</h2>
+          <button 
+            onClick={() => setShowStats(!showStats)}
+            className={styles.toggleButton}
+          >
+            {showStats ? 'Ocultar' : 'Mostrar'}
+          </button>
         </div>
-        <div className={styles.statCard}>
-          <h3>Activos</h3>
-          <p className={styles.statNumber} style={{ color: '#ef4444' }}>{activeCount}</p>
-        </div>
-        <div className={styles.statCard}>
-          <h3>Resueltos</h3>
-          <p className={styles.statNumber} style={{ color: '#10b981' }}>{resolvedCount}</p>
-        </div>
+
+        {showStats && (
+          <>
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <h3>Total Reclamos</h3>
+                <p className={styles.statNumber}>{totalCount}</p>
+              </div>
+              <div className={styles.statCard}>
+                <h3>Activos</h3>
+                <p className={styles.statNumber} style={{ color: '#ef4444' }}>{activeCount}</p>
+              </div>
+              <div className={styles.statCard}>
+                <h3>Resueltos</h3>
+                <p className={styles.statNumber} style={{ color: '#10b981' }}>{resolvedCount}</p>
+              </div>
+              <div className={styles.statCard}>
+                <h3>Hoy</h3>
+                <p className={styles.statNumber} style={{ color: '#3b82f6' }}>{todayReports}</p>
+              </div>
+              <div className={styles.statCard}>
+                <h3>Últimos 7 días</h3>
+                <p className={styles.statNumber} style={{ color: '#8b5cf6' }}>{last7DaysReports}</p>
+              </div>
+              <div className={styles.statCard}>
+                <h3>Últimos 30 días</h3>
+                <p className={styles.statNumber} style={{ color: '#f59e0b' }}>{last30DaysReports}</p>
+              </div>
+              <div className={styles.statCard}>
+                <h3>Con Fotos</h3>
+                <p className={styles.statNumber} style={{ color: '#10b981' }}>{reportsWithPhotos}</p>
+                <p className={styles.statSubtext}>{totalPhotos} fotos totales</p>
+              </div>
+              <div className={styles.statCard}>
+                <h3>Hora Pico</h3>
+                <p className={styles.statNumber} style={{ color: '#ec4899' }}>{peakHour.hour}:00</p>
+                <p className={styles.statSubtext}>{peakHour.count} reclamos</p>
+              </div>
+            </div>
+
+            <div className={styles.statsRow}>
+              <div className={styles.statsBox}>
+                <h3>📋 Por Tipo de Reclamo</h3>
+                <div className={styles.typeStatsGrid}>
+                  {statsByType.map(stat => (
+                    <div key={stat.type} className={styles.typeStatCard} style={{ borderLeftColor: stat.color }}>
+                      <div className={styles.typeStatHeader}>
+                        <span style={{ fontSize: '1.5rem' }}>{stat.icon}</span>
+                        <span style={{ fontWeight: '600', color: stat.color }}>{stat.type}</span>
+                      </div>
+                      <div className={styles.typeStatNumbers}>
+                        <div>
+                          <span className={styles.typeStatLabel}>Total:</span>
+                          <span className={styles.typeStatValue}>{stat.total}</span>
+                        </div>
+                        <div>
+                          <span className={styles.typeStatLabel}>Activos:</span>
+                          <span className={styles.typeStatValue} style={{ color: '#ef4444' }}>{stat.active}</span>
+                        </div>
+                        <div>
+                          <span className={styles.typeStatLabel}>Resueltos:</span>
+                          <span className={styles.typeStatValue} style={{ color: '#10b981' }}>{stat.resolved}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.statsRow}>
+              <div className={styles.statsBox}>
+                <h3>📍 Zonas Más Afectadas</h3>
+                <div className={styles.zonesList}>
+                  {topZones.map((zone, index) => (
+                    <div key={index} className={styles.zoneCard}>
+                      <div className={styles.zoneRank}>#{index + 1}</div>
+                      <div className={styles.zoneInfo}>
+                        <div className={styles.zoneName}>{zone.name}</div>
+                        <div className={styles.zoneStats}>
+                          <span className={styles.zoneStat}>
+                            <strong>{zone.count}</strong> total
+                          </span>
+                          <span className={styles.zoneStat} style={{ color: '#ef4444' }}>
+                            <strong>{zone.active}</strong> activos
+                          </span>
+                        </div>
+                        <div className={styles.zoneTypes}>
+                          {Object.entries(zone.types).map(([type, count]) => {
+                            const typeInfo = REPORT_TYPES.find(t => t.value === type)
+                            return (
+                              <span key={type} className={styles.zoneTypeTag} style={{ background: `${typeInfo?.color || '#666'}20`, color: typeInfo?.color || '#666' }}>
+                                {typeInfo?.icon} {count}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.statsRow}>
+              <div className={styles.statsBox}>
+                <h3>📅 Reclamos por Día de la Semana</h3>
+                <div className={styles.dayStatsGrid}>
+                  {dayStats.map(day => (
+                    <div key={day.day} className={styles.dayStatCard}>
+                      <div className={styles.dayName}>{day.day}</div>
+                      <div className={styles.dayBar}>
+                        <div 
+                          className={styles.dayBarFill}
+                          style={{ 
+                            width: `${totalCount > 0 ? (day.count / totalCount) * 100 : 0}%`,
+                            background: `linear-gradient(90deg, #667eea 0%, #764ba2 100%)`
+                          }}
+                        />
+                      </div>
+                      <div className={styles.dayNumbers}>
+                        <span className={styles.dayTotal}>{day.count}</span>
+                        <span className={styles.dayActive} style={{ color: '#ef4444' }}>{day.active} activos</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className={styles.filters}>
