@@ -23,7 +23,8 @@ export default function AdminPanel() {
   const [error, setError] = useState('')
   const [reports, setReports] = useState<WaterReport[]>([])
   const [allReports, setAllReports] = useState<WaterReport[]>([])
-  const [loading, setLoading] = useState(true)
+  const [surveys, setSurveys] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<'all' | 'active' | 'resolved'>('all')
   const [reportTypeFilter, setReportTypeFilter] = useState<string>('all')
   const [showStats, setShowStats] = useState(true)
@@ -636,6 +637,83 @@ export default function AdminPanel() {
                       <Line type="monotone" dataKey="count" stroke="#667eea" strokeWidth={2} name="Reclamos" />
                     </LineChart>
                   </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.statsRow}>
+              <div className={styles.statsBox}>
+                <h3>📊 Resultados de Encuestas</h3>
+                <div className={styles.surveysGrid}>
+                  {['castro', 'orrego', 'milei'].map((questionKey) => {
+                    const questionData = surveys.filter(s => s.question === questionKey)
+                    const total = questionData.length
+                    const buena = questionData.filter(s => s.answer === 'Buena').length
+                    const regular = questionData.filter(s => s.answer === 'Regular').length
+                    const mala = questionData.filter(s => s.answer === 'Mala').length
+
+                    const questionNames: Record<string, string> = {
+                      castro: 'Gestión de Castro',
+                      orrego: 'Gestión de Orrego',
+                      milei: 'Gestión de Milei',
+                    }
+
+                    const chartData = [
+                      { name: 'Buena', value: buena, color: '#10b981' },
+                      { name: 'Regular', value: regular, color: '#fbbf24' },
+                      { name: 'Mala', value: mala, color: '#ef4444' },
+                    ].filter(item => item.value > 0)
+
+                    return (
+                      <div key={questionKey} className={styles.surveyResultCard}>
+                        <h4>{questionNames[questionKey]}</h4>
+                        <div className={styles.surveyStats}>
+                          <div className={styles.surveyStat}>
+                            <span className={styles.surveyStatLabel}>Total:</span>
+                            <span className={styles.surveyStatValue}>{total}</span>
+                          </div>
+                          <div className={styles.surveyStat}>
+                            <span className={styles.surveyStatLabel} style={{ color: '#10b981' }}>Buena:</span>
+                            <span className={styles.surveyStatValue} style={{ color: '#10b981' }}>{buena} ({total > 0 ? ((buena / total) * 100).toFixed(1) : 0}%)</span>
+                          </div>
+                          <div className={styles.surveyStat}>
+                            <span className={styles.surveyStatLabel} style={{ color: '#fbbf24' }}>Regular:</span>
+                            <span className={styles.surveyStatValue} style={{ color: '#fbbf24' }}>{regular} ({total > 0 ? ((regular / total) * 100).toFixed(1) : 0}%)</span>
+                          </div>
+                          <div className={styles.surveyStat}>
+                            <span className={styles.surveyStatLabel} style={{ color: '#ef4444' }}>Mala:</span>
+                            <span className={styles.surveyStatValue} style={{ color: '#ef4444' }}>{mala} ({total > 0 ? ((mala / total) * 100).toFixed(1) : 0}%)</span>
+                          </div>
+                        </div>
+                        {total > 0 && (
+                          <div className={styles.surveyChart}>
+                            <ResponsiveContainer width="100%" height={200}>
+                              <PieChart>
+                                <Pie
+                                  data={chartData}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                  outerRadius={60}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                        {total === 0 && (
+                          <div className={styles.noData}>No hay respuestas aún</div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
