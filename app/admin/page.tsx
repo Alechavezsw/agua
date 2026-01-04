@@ -394,12 +394,12 @@ export default function AdminPanel() {
     
     // Título principal
     doc.setFontSize(18)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('Reporte de Reclamos', margin, yPosition)
     yPosition += 8
     
     doc.setFontSize(12)
-    doc.setFont(undefined, 'normal')
+    doc.setFont('helvetica', 'normal')
     doc.text('Sarmiento Reclamos - Panel de Administración', margin, yPosition)
     yPosition += 6
     
@@ -413,7 +413,7 @@ export default function AdminPanel() {
     // Estadísticas generales
     checkPageBreak(30)
     doc.setFontSize(14)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('Estadísticas Generales', margin, yPosition)
     yPosition += 8
     
@@ -448,7 +448,7 @@ export default function AdminPanel() {
     // Estadísticas por tipo
     checkPageBreak(30)
     doc.setFontSize(14)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('Estadísticas por Tipo de Reclamo', margin, yPosition)
     yPosition += 8
     
@@ -484,7 +484,7 @@ export default function AdminPanel() {
     // Top zonas
     checkPageBreak(40)
     doc.setFontSize(14)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('Top 15 Zonas Más Afectadas', margin, yPosition)
     yPosition += 8
     
@@ -520,7 +520,7 @@ export default function AdminPanel() {
     // Estadísticas mensuales
     checkPageBreak(30)
     doc.setFontSize(14)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('Tendencias Mensuales (Últimos 6 Meses)', margin, yPosition)
     yPosition += 8
     
