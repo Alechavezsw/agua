@@ -218,6 +218,7 @@ export default function AdminPanel() {
   const today = new Date()
   const last7Days = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
   const last30Days = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const last90Days = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000)
   
   const todayReports = allReports.filter(r => {
     const reportDate = new Date(r.created_at || '')
@@ -234,9 +235,55 @@ export default function AdminPanel() {
     return reportDate >= last30Days
   }).length
 
+  const last90DaysReports = allReports.filter(r => {
+    const reportDate = new Date(r.created_at || '')
+    return reportDate >= last90Days
+  }).length
+
   // Estadísticas de fotos
   const reportsWithPhotos = allReports.filter(r => r.photos && r.photos.length > 0).length
   const totalPhotos = allReports.reduce((sum, r) => sum + (r.photos?.length || 0), 0)
+
+  // Tiempo promedio de resolución (en días)
+  const resolvedReports = allReports.filter(r => r.status === 'resolved' && r.created_at)
+  const avgResolutionTime = resolvedReports.length > 0
+    ? resolvedReports.reduce((sum, r) => {
+        // Asumimos que se resolvió hoy si no hay fecha de resolución
+        const created = new Date(r.created_at || '')
+        const resolved = new Date() // En un sistema real, tendrías una fecha de resolución
+        const days = Math.floor((resolved.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
+        return sum + Math.max(0, days)
+      }, 0) / resolvedReports.length
+    : 0
+
+  // Tasa de resolución
+  const resolutionRate = totalCount > 0 ? (resolvedCount / totalCount) * 100 : 0
+
+  // Tendencias (comparar últimos 7 días vs 7 días anteriores)
+  const previous7Days = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000)
+  const previous7DaysReports = allReports.filter(r => {
+    const reportDate = new Date(r.created_at || '')
+    return reportDate >= previous7Days && reportDate < last7Days
+  }).length
+  const trend7Days = previous7DaysReports > 0 
+    ? ((last7DaysReports - previous7DaysReports) / previous7DaysReports) * 100 
+    : 0
+
+  // Reclamos por mes (últimos 6 meses)
+  const monthlyStats = Array.from({ length: 6 }, (_, i) => {
+    const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1)
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() - i + 1, 1)
+    const monthReports = allReports.filter(r => {
+      const reportDate = new Date(r.created_at || '')
+      return reportDate >= monthDate && reportDate < nextMonth
+    })
+    return {
+      month: monthDate.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' }),
+      count: monthReports.length,
+      active: monthReports.filter(r => r.status === 'active').length,
+      resolved: monthReports.filter(r => r.status === 'resolved').length,
+    }
+  }).reverse()
 
   // Zonas más afectadas (agrupando por dirección similar)
   const getZoneFromAddress = (address: string) => {
@@ -254,18 +301,47 @@ export default function AdminPanel() {
   const zoneStats = allReports.reduce((acc, report) => {
     const zone = getZoneFromAddress(report.address || '')
     if (!acc[zone]) {
-      acc[zone] = { name: zone, count: 0, active: 0, types: {} as Record<string, number> }
+      acc[zone] = { 
+        name: zone, 
+        count: 0, 
+        active: 0, 
+        resolved: 0,
+        types: {} as Record<string, number>,
+        lastReport: null as Date | null,
+        withPhotos: 0,
+      }
     }
     acc[zone].count++
     if (report.status === 'active') acc[zone].active++
+    if (report.status === 'resolved') acc[zone].resolved++
     const type = report.report_type || 'agua'
     acc[zone].types[type] = (acc[zone].types[type] || 0) + 1
+    if (report.photos && report.photos.length > 0) acc[zone].withPhotos++
+    if (report.created_at) {
+      const reportDate = new Date(report.created_at)
+      if (!acc[zone].lastReport || reportDate > acc[zone].lastReport) {
+        acc[zone].lastReport = reportDate
+      }
+    }
     return acc
-  }, {} as Record<string, { name: string; count: number; active: number; types: Record<string, number> }>)
+  }, {} as Record<string, { 
+    name: string
+    count: number
+    active: number
+    resolved: number
+    types: Record<string, number>
+    lastReport: Date | null
+    withPhotos: number
+  }>)
 
   const topZones = Object.values(zoneStats)
     .sort((a, b) => b.count - a.count)
-    .slice(0, 10)
+    .slice(0, 15)
+    .map(zone => ({
+      ...zone,
+      resolutionRate: zone.count > 0 ? (zone.resolved / zone.count) * 100 : 0,
+      photosRate: zone.count > 0 ? (zone.withPhotos / zone.count) * 100 : 0,
+    }))
 
   // Estadísticas por día de la semana
   const dayStats = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map((day, index) => {
@@ -297,78 +373,188 @@ export default function AdminPanel() {
   // Colores para gráficos
   const CHART_COLORS = ['#3b82f6', '#fbbf24', '#8b5cf6', '#10b981', '#ef4444', '#ec4899', '#06b6d4']
 
-  // Función para generar reporte PDF
+  // Función para generar reporte PDF mejorado
   const generatePDFReport = () => {
-    const doc = new jsPDF()
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    let yPosition = 20
+    const margin = 14
+    const maxWidth = pageWidth - (margin * 2)
     
-    // Título
-    doc.setFontSize(20)
-    doc.text('Reporte de Reclamos - Sarmiento Reclamos', 14, 20)
+    // Función helper para agregar nueva página si es necesario
+    const checkPageBreak = (requiredSpace: number = 20) => {
+      if (yPosition + requiredSpace > pageHeight - 20) {
+        doc.addPage()
+        yPosition = 20
+        return true
+      }
+      return false
+    }
+    
+    // Título principal
+    doc.setFontSize(18)
+    doc.setFont(undefined, 'bold')
+    doc.text('Reporte de Reclamos', margin, yPosition)
+    yPosition += 8
+    
+    doc.setFontSize(12)
+    doc.setFont(undefined, 'normal')
+    doc.text('Sarmiento Reclamos - Panel de Administración', margin, yPosition)
+    yPosition += 6
     
     // Fecha del reporte
-    doc.setFontSize(10)
-    doc.text(`Generado el: ${new Date().toLocaleString('es-AR')}`, 14, 30)
+    doc.setFontSize(9)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`Generado el: ${new Date().toLocaleString('es-AR')}`, margin, yPosition)
+    doc.setTextColor(0, 0, 0)
+    yPosition += 10
     
     // Estadísticas generales
+    checkPageBreak(30)
     doc.setFontSize(14)
-    doc.text('Estadísticas Generales', 14, 40)
-    doc.setFontSize(10)
+    doc.setFont(undefined, 'bold')
+    doc.text('Estadísticas Generales', margin, yPosition)
+    yPosition += 8
     
     const generalStats = [
       ['Total Reclamos', totalCount.toString()],
       ['Activos', activeCount.toString()],
       ['Resueltos', resolvedCount.toString()],
+      ['Tasa de Resolución', `${resolutionRate.toFixed(1)}%`],
       ['Hoy', todayReports.toString()],
       ['Últimos 7 días', last7DaysReports.toString()],
       ['Últimos 30 días', last30DaysReports.toString()],
+      ['Últimos 90 días', last90DaysReports.toString()],
+      ['Tiempo Promedio Resolución', `${avgResolutionTime.toFixed(1)} días`],
       ['Con Fotos', reportsWithPhotos.toString()],
       ['Total Fotos', totalPhotos.toString()],
+      ['Tendencia 7 días', `${trend7Days >= 0 ? '+' : ''}${trend7Days.toFixed(1)}%`],
     ]
     
     autoTable(doc, {
-      startY: 45,
+      startY: yPosition,
       head: [['Métrica', 'Valor']],
       body: generalStats,
       theme: 'striped',
+      headStyles: { fillColor: [102, 126, 234], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+      margin: { left: margin, right: margin },
     })
+    
+    yPosition = (doc as any).lastAutoTable.finalY + 12
     
     // Estadísticas por tipo
-    let finalY = (doc as any).lastAutoTable.finalY + 15
+    checkPageBreak(30)
     doc.setFontSize(14)
-    doc.text('Estadísticas por Tipo de Reclamo', 14, finalY)
+    doc.setFont(undefined, 'bold')
+    doc.text('Estadísticas por Tipo de Reclamo', margin, yPosition)
+    yPosition += 8
     
-    const typeStatsData = statsByType.map(stat => [
-      `${stat.icon} ${stat.type}`,
-      stat.total.toString(),
-      stat.active.toString(),
-      stat.resolved.toString(),
-    ])
+    const typeStatsData = statsByType
+      .filter(stat => stat.total > 0)
+      .map(stat => [
+        stat.type,
+        stat.total.toString(),
+        stat.active.toString(),
+        stat.resolved.toString(),
+        stat.total > 0 ? `${((stat.resolved / stat.total) * 100).toFixed(1)}%` : '0%',
+      ])
     
     autoTable(doc, {
-      startY: finalY + 5,
-      head: [['Tipo', 'Total', 'Activos', 'Resueltos']],
+      startY: yPosition,
+      head: [['Tipo', 'Total', 'Activos', 'Resueltos', 'Tasa Resolución']],
       body: typeStatsData,
       theme: 'striped',
+      headStyles: { fillColor: [102, 126, 234], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      columnStyles: {
+        0: { cellWidth: 70 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 40 },
+      },
+      margin: { left: margin, right: margin },
     })
     
-    // Top zonas
-    finalY = (doc as any).lastAutoTable.finalY + 15
-    doc.setFontSize(14)
-    doc.text('Top 10 Zonas Más Afectadas', 14, finalY)
+    yPosition = (doc as any).lastAutoTable.finalY + 12
     
-    const zonesData = topZones.map((zone, index) => [
+    // Top zonas
+    checkPageBreak(40)
+    doc.setFontSize(14)
+    doc.setFont(undefined, 'bold')
+    doc.text('Top 15 Zonas Más Afectadas', margin, yPosition)
+    yPosition += 8
+    
+    const zonesData = topZones.slice(0, 15).map((zone, index) => [
       `#${index + 1}`,
-      zone.name,
+      zone.name.length > 30 ? zone.name.substring(0, 27) + '...' : zone.name,
       zone.count.toString(),
       zone.active.toString(),
+      zone.resolved.toString(),
+      `${zone.resolutionRate.toFixed(1)}%`,
     ])
     
     autoTable(doc, {
-      startY: finalY + 5,
-      head: [['Rank', 'Zona', 'Total', 'Activos']],
+      startY: yPosition,
+      head: [['Rank', 'Zona', 'Total', 'Activos', 'Resueltos', 'Tasa Res.']],
       body: zonesData,
       theme: 'striped',
+      headStyles: { fillColor: [102, 126, 234], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 7, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 30 },
+      },
+      margin: { left: margin, right: margin },
     })
+    
+    yPosition = (doc as any).lastAutoTable.finalY + 12
+    
+    // Estadísticas mensuales
+    checkPageBreak(30)
+    doc.setFontSize(14)
+    doc.setFont(undefined, 'bold')
+    doc.text('Tendencias Mensuales (Últimos 6 Meses)', margin, yPosition)
+    yPosition += 8
+    
+    const monthlyData = monthlyStats.map(month => [
+      month.month,
+      month.count.toString(),
+      month.active.toString(),
+      month.resolved.toString(),
+    ])
+    
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Mes', 'Total', 'Activos', 'Resueltos']],
+      body: monthlyData,
+      theme: 'striped',
+      headStyles: { fillColor: [102, 126, 234], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      margin: { left: margin, right: margin },
+    })
+    
+    // Pie de página en cada página
+    const pageCount = doc.internal.pages.length - 1
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setTextColor(100, 100, 100)
+      doc.text(
+        `Página ${i} de ${pageCount} - Sarmiento Reclamos`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      )
+      doc.setTextColor(0, 0, 0)
+    }
     
     // Guardar PDF
     doc.save(`reporte-sarmiento-reclamos-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -444,39 +630,56 @@ export default function AdminPanel() {
         {showStats && (
           <>
             <div className={styles.statsGrid}>
-              <div className={styles.statCard}>
-                <h3>Total Reclamos</h3>
-                <p className={styles.statNumber}>{totalCount}</p>
+              <div className={styles.statCard} style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+                <h3 style={{ color: 'rgba(255,255,255,0.9)' }}>Total Reclamos</h3>
+                <p className={styles.statNumber} style={{ color: 'white' }}>{totalCount}</p>
               </div>
-              <div className={styles.statCard}>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #ef4444' }}>
                 <h3>Activos</h3>
                 <p className={styles.statNumber} style={{ color: '#ef4444' }}>{activeCount}</p>
+                <p className={styles.statSubtext}>{totalCount > 0 ? `${((activeCount / totalCount) * 100).toFixed(1)}% del total` : '0%'}</p>
               </div>
-              <div className={styles.statCard}>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #10b981' }}>
                 <h3>Resueltos</h3>
                 <p className={styles.statNumber} style={{ color: '#10b981' }}>{resolvedCount}</p>
+                <p className={styles.statSubtext}>{resolutionRate.toFixed(1)}% tasa de resolución</p>
               </div>
-              <div className={styles.statCard}>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #3b82f6' }}>
                 <h3>Hoy</h3>
                 <p className={styles.statNumber} style={{ color: '#3b82f6' }}>{todayReports}</p>
+                <p className={styles.statSubtext}>Reclamos nuevos</p>
               </div>
-              <div className={styles.statCard}>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #8b5cf6' }}>
                 <h3>Últimos 7 días</h3>
                 <p className={styles.statNumber} style={{ color: '#8b5cf6' }}>{last7DaysReports}</p>
+                <p className={styles.statSubtext}>
+                  {trend7Days >= 0 ? '↗' : '↘'} {Math.abs(trend7Days).toFixed(1)}% vs período anterior
+                </p>
               </div>
-              <div className={styles.statCard}>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #f59e0b' }}>
                 <h3>Últimos 30 días</h3>
                 <p className={styles.statNumber} style={{ color: '#f59e0b' }}>{last30DaysReports}</p>
+                <p className={styles.statSubtext}>Promedio: {(last30DaysReports / 30).toFixed(1)}/día</p>
               </div>
-              <div className={styles.statCard}>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #10b981' }}>
                 <h3>Con Fotos</h3>
                 <p className={styles.statNumber} style={{ color: '#10b981' }}>{reportsWithPhotos}</p>
                 <p className={styles.statSubtext}>{totalPhotos} fotos totales</p>
               </div>
-              <div className={styles.statCard}>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #ec4899' }}>
                 <h3>Hora Pico</h3>
                 <p className={styles.statNumber} style={{ color: '#ec4899' }}>{peakHour.hour}:00</p>
                 <p className={styles.statSubtext}>{peakHour.count} reclamos</p>
+              </div>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #06b6d4' }}>
+                <h3>Tiempo Promedio</h3>
+                <p className={styles.statNumber} style={{ color: '#06b6d4' }}>{avgResolutionTime.toFixed(1)}</p>
+                <p className={styles.statSubtext}>días para resolver</p>
+              </div>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #14b8a6' }}>
+                <h3>Últimos 90 días</h3>
+                <p className={styles.statNumber} style={{ color: '#14b8a6' }}>{last90DaysReports}</p>
+                <p className={styles.statSubtext}>Tendencia trimestral</p>
               </div>
             </div>
 
@@ -553,7 +756,7 @@ export default function AdminPanel() {
             <div className={styles.statsRow}>
               <div className={styles.statsBox}>
                 <h3>📍 Zonas Más Afectadas</h3>
-                <div className={styles.zonesList}>
+                <div className={styles.zonesGrid}>
                   {topZones.map((zone, index) => (
                     <div key={index} className={styles.zoneCard}>
                       <div className={styles.zoneRank}>#{index + 1}</div>
@@ -566,6 +769,23 @@ export default function AdminPanel() {
                           <span className={styles.zoneStat} style={{ color: '#ef4444' }}>
                             <strong>{zone.active}</strong> activos
                           </span>
+                          <span className={styles.zoneStat} style={{ color: '#10b981' }}>
+                            <strong>{zone.resolved}</strong> resueltos
+                          </span>
+                        </div>
+                        <div className={styles.zoneProgress}>
+                          <div className={styles.zoneProgressBar}>
+                            <div 
+                              className={styles.zoneProgressFill} 
+                              style={{ 
+                                width: `${zone.resolutionRate}%`,
+                                background: zone.resolutionRate >= 70 ? '#10b981' : zone.resolutionRate >= 40 ? '#fbbf24' : '#ef4444'
+                              }}
+                            />
+                          </div>
+                          <span className={styles.zoneProgressText}>
+                            {zone.resolutionRate.toFixed(1)}% resueltos
+                          </span>
                         </div>
                         <div className={styles.zoneTypes}>
                           {Object.entries(zone.types).map(([type, count]) => {
@@ -577,9 +797,39 @@ export default function AdminPanel() {
                             )
                           })}
                         </div>
+                        {zone.lastReport && (
+                          <div className={styles.zoneLastReport}>
+                            Último: {zone.lastReport.toLocaleDateString('es-AR')}
+                          </div>
+                        )}
+                        {zone.withPhotos > 0 && (
+                          <div className={styles.zonePhotos}>
+                            📸 {zone.withPhotos} con fotos ({zone.photosRate.toFixed(0)}%)
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.statsRow}>
+              <div className={styles.statsBox}>
+                <h3>📈 Tendencias Mensuales</h3>
+                <div className={styles.chartContainer}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={monthlyStats}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="count" fill="#667eea" name="Total" />
+                      <Bar dataKey="active" fill="#ef4444" name="Activos" />
+                      <Bar dataKey="resolved" fill="#10b981" name="Resueltos" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>

@@ -109,13 +109,12 @@ export default function Home() {
         </div>
 
         <div className={styles.sidebar}>
-          <WeatherWidget />
-          <PowerOutagesWidget />
-          
-          <div className={styles.stats}>
-            <h2>Reclamos Activos</h2>
-            <p className={styles.count}>{reports.length}</p>
-          </div>
+          <button
+            className={styles.reportButton}
+            onClick={() => setShowForm(true)}
+          >
+            + Nuevo Reclamo
+          </button>
 
           <div className={styles.surveysSection}>
             <h3 className={styles.surveysTitle}>📊 Encuestas</h3>
@@ -133,12 +132,14 @@ export default function Home() {
             />
           </div>
 
-          <button
-            className={styles.reportButton}
-            onClick={() => setShowForm(true)}
-          >
-            + Nuevo Reclamo
-          </button>
+          <PowerOutagesWidget />
+          
+          <WeatherWidget />
+          
+          <div className={styles.stats}>
+            <h2>Reclamos Activos</h2>
+            <p className={styles.count}>{reports.length}</p>
+          </div>
 
           <details className={styles.instructions}>
             <summary>Instrucciones</summary>
